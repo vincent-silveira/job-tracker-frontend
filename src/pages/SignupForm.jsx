@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../api/axios";
 
 function SignupForm() {
+
+  const navigate = useNavigate();
+
   // Password
   const [showPassword, setShowPassword] = useState(false);
 
@@ -81,16 +84,27 @@ function SignupForm() {
     try {
       setLoading(true);
 
-      const res = await api.post("/auth/signup", {
+      const res = await api.post("/api/users/register", {
         name: values.name,
         email: values.email,
         password: values.password,
       });
 
-      console.log("Signup success:", res.data);
+      if (res.data.success) {
 
-      // ✅ redirect / toast
-      // navigate("/login");
+        console.log(res);
+        const username = res.data.user.name;
+        const role = res.data.user.role;
+        const userId = res.data.user.id;
+        
+
+        if (role == "USER") {
+          localStorage.setItem("user", JSON.stringify({ username, userId }));
+          navigate("/dashboard");
+        } else {
+          setApiError("Something went wrong...");
+        }
+      }
     } catch (err) {
       // Axios error handling
       if (err.response) {

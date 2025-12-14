@@ -1,112 +1,10 @@
-// import { useState } from "react";
-// import { Link } from "react-router-dom";
-
-
-
-// function LoginForm() {
-//   // Success / Failure Toast
-//   const [toast, setToast] = useState(null);
-
-//   // Display Toast Message
-//   const showToast = (type, message) => {
-//     setToast({ type, message });
-//     setTimeout(() => {
-//       setToast(null);
-//     }, 3000);
-//   };
-
-//   const handleSubmit = (e) => {
-//     e.preventDefault();
-
-//     const formData = new FormData(e.target);
-
-//     const data = {
-//       username: formData.get("username"),
-//       password: formData.get("password"),
-//     };
-
-//     // simple required-field validation
-//      if (!data.username || !data.password) {
-//       showToast("error", "Please fill in all required fields.");
-//       return;
-//     }
-
-//     // TODO: send form to your API here
-//     console.log("Form submitted:");
-
-//     showToast("success", "Login successful!");
-    
-//     e.target.reset();
-//   };
-
-//   return (
-//     <div className="min-h-screen flex items-center justify-center bg-slate-100 p-6">
-//       {/* Toast */}
-      
-
-//       {/* Main Form Card */}
-//       <form 
-//        onSubmit={handleSubmit}
-//         className="w-full max-w-md bg-white p-8 rounded-2xl shadow-lg space-y-6">
-//         <h2 className="text-2xl font-bold text-slate-800 text-center">
-//           Login
-//         </h2>
-
-//         {/* Username */}
-//         <div className="space-y-1">
-//           <label className="block text-sm font-medium text-slate-700">
-//             Username
-//           </label>
-//           <input
-//             type="text"
-//             name="username"
-//             placeholder="Enter username"
-//             className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-0"
-//           />
-//         </div>
-
-//         {/* Password */}
-//         <div className="space-y-1">
-//           <label className="block text-sm font-medium text-slate-700">
-//             Password
-//           </label>
-//           <input
-//             type="password"
-//             name="password"
-//             placeholder="Enter password"
-//             className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-0"
-//           />
-//         </div>
-
-//         {/* Signup link */}
-//         <p className="text-sm text-end text-slate-600">
-//           Don&apos;t have an account?{" "}
-//           <Link to="/signup" className="text-emerald-600 hover:underline font-medium">
-//             Sign up
-//           </Link>
-//         </p>
-
-//         {/* Login Button */}
-//         <button
-//           type="submit"
-//             className="w-full bg-emerald-600 text-white py-2 rounded-lg font-semibold
-//                      hover:bg-emerald-700 transition"
-//         >
-//           Login
-//         </button>
-//       </form>
-//     </div>
-//   );
-// }
-
-// export default LoginForm;
-
-
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../api/axios";
 
 function LoginForm() {
+
+  const navigate = useNavigate();
   // Password visibility
   const [showPassword, setShowPassword] = useState(false);
 
@@ -175,16 +73,27 @@ function LoginForm() {
     try {
       setLoading(true);
 
-      const res = await api.post("/auth/login", {
+      const res = await api.post("/api/users/login", {
         email: values.email,
         password: values.password,
       });
 
-      console.log("Login success:", res.data);
+      if (res.data.success) {
 
-      // TODO:
-      // - store token
-      // - navigate("/dashboard")
+        console.log(res);
+        const username = res.data.user.name;
+        const role = res.data.user.role;
+        const userId = res.data.user.id;
+        
+
+        if (role == "USER") {
+          localStorage.setItem("user", JSON.stringify({ username, userId }));
+          navigate("/dashboard");
+        } else {
+          setApiError("Something went wrong...");
+        }
+      }
+
 
     } catch (err) {
       if (err.response) {
