@@ -5,7 +5,15 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  //withCredentials: true, // if using cookies
+});
+
+// Axios interceptor to attach token automatically
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 export default api;
