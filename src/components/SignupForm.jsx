@@ -1,116 +1,178 @@
 import { useState } from "react";
+import { authAPI } from "../services/api";
 import { Link } from "react-router-dom";
 
-
-
 function SignupForm() {
-  // Success / Failure Toast
   const [toast, setToast] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Display Toast Message
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    terms: false, // frontend only
+  });
+
   const showToast = (type, message) => {
     setToast({ type, message });
-    setTimeout(() => {
-      setToast(null);
-    }, 3000);
+    setTimeout(() => setToast(null), 3000);
   };
 
-  const handleSubmit = (e) => {
+  const handleChange = (e) => {
+    const { name, type, value, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const formData = new FormData(e.target);
-
-    const data = {
-      username: formData.get("username"),
-      password: formData.get("password"),
-    };
-
-    // simple required-field validation
-     if (!data.username || !data.password) {
-      showToast("error", "Please fill in all required fields.");
+    if (!formData.name || !formData.email || !formData.password) {
+      showToast("error", "Please fill all required fields.");
       return;
     }
 
-    // TODO: send form to your API here
-    console.log("Form submitted:");
+    if (!formData.terms) {
+      showToast("error", "You must accept the terms and conditions.");
+      return;
+    }
 
-    showToast("success", "Signup successful!");
-    
-    e.target.reset();
+    setIsLoading(true);
+
+    try {
+      // ✅ send only backend-expected fields
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      };
+
+      const data = await authAPI.register(payload);
+
+      if (data.success) {
+        showToast("success", "Account created! Redirecting to login...");
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 2000);
+      } else {
+        showToast("error", data.message || "Signup failed");
+      }
+    } catch (err) {
+  console.log("Signup error:", err);
+
+  if (err?.errors) {
+    // backend validation errors
+    const messages = Object.values(err.errors).join(", ");
+    showToast("error", messages);
+  } else if (err?.message) {
+    showToast("error", err.message);
+  } else {
+    showToast("error", "Signup failed. Please try again.");
+  }
+}finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 p-6">
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-50">
-          <div
-            className={`flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg text-sm font-medium text-white
-            ${toast.type === "success" ? "bg-emerald-600" : "bg-red-600"}`}
-          >
-            <span>{toast.type === "success" ? "✅" : "⚠️"}</span>
-            <span>{toast.message}</span>
-            <button
-              type="button"
-              className="ml-2 text-white/80 hover:text-white"
-              onClick={() => setToast(null)}
-            >
-              ✕
-            </button>
-          </div>
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-md bg-white p-8 rounded-2xl shadow-lg space-y-4"
+      >
+        {/* Title */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">
+            Create Account
+          </h1>
+          <p className="text-slate-600">
+            Start tracking your job applications today
+          </p>
         </div>
-      )}
 
-      {/* Main Form Card */}
-      <form 
-       onSubmit={handleSubmit}
-        className="w-full max-w-md bg-white p-8 rounded-2xl shadow-lg space-y-6">
-        <h2 className="text-2xl font-bold text-slate-800 text-center">
-          Signup
-        </h2>
+        {/* Name */}
+        <input
+          type="text"
+          name="name"
+          placeholder="Full Name"
+          value={formData.name}
+          onChange={handleChange}
+          className="w-full px-4 py-2 rounded-xl border-2 border-slate-300 focus:border-emerald-500 focus:outline-none"
+        />
 
-        {/* Username */}
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-slate-700">
-            Username
-          </label>
-          <input
-            type="text"
-            name="username"
-            placeholder="Enter username"
-            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-0"
-          />
-        </div>
+        {/* Email */}
+        <input
+          type="email"
+          name="email"
+          placeholder="Email Address"
+          value={formData.email}
+          onChange={handleChange}
+          className="w-full px-4 py-2 rounded-xl border-2 border-slate-300 focus:border-emerald-500 focus:outline-none"
+        />
 
         {/* Password */}
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-slate-700">
-            Password
-          </label>
+        <div className="relative">
           <input
-            type="password"
+            type={showPassword ? "text" : "password"}
             name="password"
-            placeholder="Enter password"
-            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-0"
+            placeholder="Password"
+            value={formData.password}
+            onChange={handleChange}
+            className="w-full px-4 py-2 rounded-xl border-2 border-slate-300 focus:border-emerald-500 focus:outline-none"
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-2 text-sm text-slate-500"
+          >
+            {showPassword ? "Hide" : "Show"}
+          </button>
         </div>
 
+        {/* Terms */}
+        <div className="flex items-start">
+          <input
+            type="checkbox"
+            name="terms"
+            checked={formData.terms}
+            onChange={handleChange}
+            className="mt-1"
+          />
+          <span className="ml-2 text-sm text-slate-600">
+            I agree to the Terms & Privacy Policy
+          </span>
+        </div>
+
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full bg-emerald-600 text-white py-2 rounded-lg font-semibold disabled:opacity-50 hover:bg-emerald-700 transition"
+        >
+          {isLoading ? "Creating account..." : "Sign Up"}
+        </button>
+
         {/* Login link */}
-        <p className="text-sm text-end text-slate-600">
+        <p className="text-center text-slate-600">
           Already have an account?{" "}
-          <Link to="/login" className="text-emerald-600 hover:underline font-medium">
+          <Link to="/login" className="text-emerald-600 font-medium">
             Login
           </Link>
         </p>
 
-        {/* Signup Button */}
-        <button
-          type="submit"
-            className="w-full bg-emerald-600 text-white py-2 rounded-lg font-semibold
-                     hover:bg-emerald-700 transition"
-        >
-          SignUp
-        </button>
+        {/* Toast */}
+        {toast && (
+          <p
+            className={`text-center text-sm ${
+              toast.type === "error" ? "text-red-600" : "text-green-600"
+            }`}
+          >
+            {toast.message}
+          </p>
+        )}
       </form>
     </div>
   );

@@ -1,177 +1,145 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { jobAPI, authAPI } from "../services/api";
 
 function ApplicationForm() {
-  // Success / Failure Toast
-  const [toast, setToast] = useState(null);
+  const navigate = useNavigate();
+  const { id } = useParams(); // id exists only for edit
+  const [formData, setFormData] = useState({
+    company: "",
+    role: "",
+    appliedDate: "",
+    source: "",
+    status: "",
+  });
+  const [loading, setLoading] = useState(false);
 
-  // Display Toast Message
-  const showToast = (type, message) => {
-    setToast({ type, message });
-    setTimeout(() => {
-      setToast(null);
-    }, 3000);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    const formData = new FormData(e.target);
-
-    const data = {
-      company: formData.get("company"),
-      role: formData.get("role"),
-      appliedDate: formData.get("appliedDate"),
-      source: formData.get("source"),
-      status: formData.get("status"),
+  useEffect(() => {
+    const fetchJob = async () => {
+      if (id) {
+        setLoading(true);
+        try {
+          const user = authAPI.getCurrentUser();
+          const jobs = await jobAPI.getUserJobs(user.id);
+          const jobToEdit = jobs.find((j) => j.id.toString() === id);
+          if (jobToEdit) {
+            setFormData({
+              company: jobToEdit.company || "",
+              role: jobToEdit.role || "",
+              appliedDate: jobToEdit.appliedDate?.split("T")[0] || "",
+              source: jobToEdit.source || "",
+              status: jobToEdit.status || "",
+            });
+          }
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setLoading(false);
+        }
+      }
     };
+    fetchJob();
+  }, [id]);
 
-    // simple required-field validation
-     if (!data.company || !data.role || !data.source || !data.status) {
-      showToast("error", "Please fill in all required fields.");
-      return;
-    }
-
-    // TODO: send form to your API here
-    console.log("Form submitted:");
-
-    showToast("success", "Application saved successfully!");
-    
-    e.target.reset();
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (id) {
+        await jobAPI.updateJob(id, formData);
+        alert("Job updated successfully!");
+      } else {
+        await jobAPI.createJob(formData);
+        alert("Job added successfully!");
+      }
+      navigate("/dashboard", { state: { refresh: true } });
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to save application");
+    }
+  };
+
+  if (loading) return <p>Loading job...</p>;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 p-6">
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-50">
-          <div
-            className={`flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg text-sm font-medium text-white
-            ${toast.type === "success" ? "bg-emerald-600" : "bg-red-600"}`}
-          >
-            <span>{toast.type === "success" ? "✅" : "⚠️"}</span>
-            <span>{toast.message}</span>
-            <button
-              type="button"
-              className="ml-2 text-white/80 hover:text-white"
-              onClick={() => setToast(null)}
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Main Form Card */}
-      <form 
-       onSubmit={handleSubmit}
-        className="w-full max-w-md bg-white p-8 rounded-2xl shadow-lg space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-md bg-white p-8 rounded-2xl shadow-lg space-y-6"
+      >
         <h2 className="text-2xl font-bold text-slate-800 text-center">
-          Add Job Application
+          {id ? "Edit Job Application" : "Add Job Application"}
         </h2>
 
-        {/* Company */}
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-slate-700">
-            Company
-          </label>
-          <input
-            type="text"
-            name="company"
-            placeholder="Enter company name"
-            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-0"
-          />
-        </div>
+        <input
+          type="text"
+          name="company"
+          value={formData.company}
+          onChange={handleChange}
+          placeholder="Company"
+          required
+          className="w-full px-4 py-2 rounded-lg border"
+        />
+        <select
+          name="role"
+          value={formData.role}
+          onChange={handleChange}
+          required
+          className="w-full px-4 py-2 rounded-lg border"
+        >
+          <option value="">Select Role</option>
+          <option value="FRONTEND">Frontend Developer</option>
+          <option value="BACKEND">Backend Developer</option>
+          <option value="FULLSTACK">Full Stack Developer</option>
+          <option value="DATA_ANALYST">Data Analyst</option>
+          <option value="OTHER">Other</option>
+        </select>
+        <input
+          type="date"
+          name="appliedDate"
+          value={formData.appliedDate}
+          onChange={handleChange}
+          className="w-full px-4 py-2 rounded-lg border"
+        />
+        <select
+          name="source"
+          value={formData.source}
+          onChange={handleChange}
+          required
+          className="w-full px-4 py-2 rounded-lg border"
+        >
+          <option value="">Select Source</option>
+          <option value="LINKEDIN">LinkedIn</option>
+          <option value="COMPANY_SITE">Company Website</option>
+          <option value="REFERRAL">Referral</option>
+          <option value="JOB_BOARD">Job Board</option>
+          <option value="RECRUITER">Recruiter</option>
+          <option value="OTHER">Other</option>
+        </select>
+        <select
+          name="status"
+          value={formData.status}
+          onChange={handleChange}
+          required
+          className="w-full px-4 py-2 rounded-lg border"
+        >
+          <option value="">Select Status</option>
+          <option value="APPLIED">Applied</option>
+          <option value="PHONE_SCREEN">Phone Screen</option>
+          <option value="INTERVIEW">Interview</option>
+          <option value="OFFER">Offer</option>
+          <option value="REJECTED">Rejected</option>
+          <option value="ON_HOLD">On Hold</option>
+        </select>
 
-        {/* Role */}
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-slate-700">
-            Role
-          </label>
-          <select
-            name="role"
-            defaultValue=""
-            className="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white
-                       focus:border-emerald-500 focus:outline-none
-                       focus:ring-2 focus:ring-emerald-500 focus:ring-offset-0 appearance-none"
-          >
-            <option value="" disabled>
-              Select role
-            </option>
-            <option value="frontend">Frontend Developer</option>
-            <option value="backend">Backend Developer</option>
-            <option value="fullstack">Full Stack Developer</option>
-            <option value="data-analyst">Data Analyst</option>
-            <option value="product-manager">Product Manager</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-
-        {/* Applied Date */}
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-slate-700">
-            Applied Date
-          </label>
-          <input
-            type="date"
-            name="applied-date"
-            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-0 "
-          />
-        </div>
-
-        {/* Source */}
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-slate-700">
-            Source
-          </label>
-          <select
-            name="source"
-            defaultValue=""
-            className="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white
-                       focus:border-emerald-500 focus:outline-none
-                       focus:ring-2 focus:ring-emerald-500 focus:ring-offset-0 appearance-none"
-          >
-            <option value="" disabled>
-              Select source
-            </option>
-            <option value="linkedin">LinkedIn</option>
-            <option value="company-site">Company Website</option>
-            <option value="referral">Referral</option>
-            <option value="job-board">Job Board (Indeed, etc.)</option>
-            <option value="recruiter">Recruiter</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-
-        {/* Status */}
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-slate-700">
-            Status
-          </label>
-          <select
-            name="status"
-            defaultValue=""
-            className="w-full px-4 py-2  rounded-lg border border-slate-300 bg-white
-                       focus:border-emerald-500 focus:outline-none
-                       focus:ring-2 focus:ring-emerald-500 focus:ring-offset-0 appearance-none"
-          >
-            <option value="" disabled>
-              Select status
-            </option>
-            <option value="applied">Applied</option>
-            <option value="phone-screen">Phone Screen</option>
-            <option value="interview">Interview</option>
-            <option value="offer">Offer</option>
-            <option value="rejected">Rejected</option>
-            <option value="on-hold">On Hold</option>
-          </select>
-        </div>
-
-        {/* Submit Button */}
         <button
           type="submit"
-          className="w-full bg-emerald-600 text-white py-2 rounded-lg font-semibold hover:bg-emerald-700 transition"
+          className="w-full bg-emerald-600 text-white py-2 rounded-lg font-semibold hover:bg-emerald-700"
         >
-          Save Application
+          {id ? "Update Application" : "Save Application"}
         </button>
       </form>
     </div>
