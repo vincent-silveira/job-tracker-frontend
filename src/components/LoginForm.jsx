@@ -39,6 +39,7 @@ function LoginForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validate all fields
     const newErrors = {};
     Object.keys(values).forEach((field) => {
       const error = validate(field, values[field]);
@@ -49,33 +50,29 @@ function LoginForm() {
 
     try {
       setLoading(true);
+      
+      // Call appropriate login API
+      const response =  await authAPI.login(values,isAdmin);
 
-      // Single login API for both user and admin
-      const response = await authAPI.login(values);
+      // Check if login was successful
+     // Check if login was successful
+if (response.token && response.user) {
+  showToast("success", "Login successful!");
 
-      if (response.success && response.token && response.user) {
-        showToast("success", "Login successful!");
+  setTimeout(() => {
+    if (response.user.role === "ADMIN") {
+      navigate("/admin-dashboard", { replace: true });
+    } else {
+      navigate("/dashboard", { replace: true });
+    }
+  }, 500);
+} else {
+  showToast("error", "Invalid login response");
+}
 
-        // Redirect based on user role
-        setTimeout(() => {
-          if (
-            response.user.role === "ADMIN" ||
-            response.user.role === "SUPER_ADMIN"
-          ) {
-            navigate("/admin-dashboard", { replace: true });
-          } else {
-            navigate("/dashboard", { replace: true });
-          }
-        }, 500);
-      } else {
-        showToast("error", "User not found or invalid credentials");
-      }
     } catch (err) {
       console.error("Login error:", err);
-      showToast(
-        "error",
-        err?.message || "Login failed. Please check your credentials."
-      );
+      showToast("error", err?.message || "Login failed. Please check your credentials.");
     } finally {
       setLoading(false);
     }
@@ -83,6 +80,7 @@ function LoginForm() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6">
+      {/* Toast */}
       {toast && (
         <div className="fixed top-6 right-6 z-50 animate-slide-in">
           <div
@@ -106,27 +104,13 @@ function LoginForm() {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div
-            className={`inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br ${
-              isAdmin ? "from-purple-500 to-purple-600" : "from-emerald-500 to-emerald-600"
-            } rounded-2xl shadow-lg mb-4`}
-          >
-            <svg
-              className="w-8 h-8 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-              />
+          <div className={`inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br ${isAdmin ? 'from-purple-500 to-purple-600' : 'from-emerald-500 to-emerald-600'} rounded-2xl shadow-lg mb-4`}>
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-slate-800 mb-2">Welcome Back</h1>
-          <p className="text-slate-600">Sign in to {isAdmin ? "Admin Panel" : "Smart Job Tracker"}</p>
+          <p className="text-slate-600">Sign in to {isAdmin ? 'Admin Panel' : 'Smart Job Tracker'}</p>
         </div>
 
         {/* Login Type Toggle */}
@@ -205,7 +189,9 @@ function LoginForm() {
               <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
               <span className="ml-2 text-slate-600 group-hover:text-slate-800 transition-colors">Remember me</span>
             </label>
-            <button type="button" className="text-emerald-600 hover:text-emerald-700 font-medium transition-colors">Forgot password?</button>
+            <button type="button" className="text-emerald-600 hover:text-emerald-700 font-medium transition-colors">
+              Forgot password?
+            </button>
           </div>
 
           {/* Submit Button */}
@@ -214,10 +200,21 @@ function LoginForm() {
             disabled={loading}
             className={`w-full ${isAdmin ? 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 focus:ring-purple-500/30' : 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 focus:ring-emerald-500/30'} text-white py-3.5 rounded-xl font-semibold focus:outline-none focus:ring-4 transform transition-all duration-200 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? (
+              <>
+                <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Signing in...</span>
+              </>
+            ) : (
+              "Sign In"
+            )}
           </button>
         </form>
 
+        {/* Sign Up Link */}
         {!isAdmin && (
           <p className="text-center mt-6 text-slate-600">
             Don't have an account?{" "}
